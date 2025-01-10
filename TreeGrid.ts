@@ -1,15 +1,13 @@
 import { css, html, LitElement, TemplateResult } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { property, query, state } from 'lit/decorators.js';
 import { ref } from 'lit/directives/ref.js';
 
-import type { List, SingleSelectedEvent } from '@material/mwc-list';
-import type { ListItem } from '@material/mwc-list/mwc-list-item';
-import type { TextField } from '@material/mwc-textfield';
+import { ScopedElementsMixin } from '@open-wc/scoped-elements/lit-element.js';
 
-import '@material/mwc-list';
-import '@material/mwc-list/mwc-list-item';
-import '@material/mwc-textfield';
-import '@material/mwc-icon';
+import { MdIcon } from '@scopedelement/material-web/icon/MdIcon.js';
+import { MdList } from '@scopedelement/material-web/list/MdList.js';
+import { MdListItem } from '@scopedelement/material-web/list/MdListItem.js';
+import { MdOutlinedTextField } from '@scopedelement/material-web/textfield/MdOutlinedTextField.js';
 
 export type TreeSelection = { [name: string]: TreeSelection };
 
@@ -47,22 +45,7 @@ function getColumns(rows: Path[], count: number): (Path | undefined)[][] {
 
 const selectAllValue = '$OSCD$selectAll$89764a15-504e-48f3-93b5-c8064dd39ee7';
 
-const placeholderCell = html`<mwc-list-item noninteractive></mwc-list-item>`;
-
-function renderCollapseCell(path: Path): TemplateResult {
-  const needle = JSON.stringify(path.slice(0, -1));
-  if (path.length < 2)
-    return html`
-      <mwc-list-item hasMeta noninteractive
-        ><mwc-icon style="opacity: 0" ; slot="meta"
-          >unfold_less</mwc-icon
-        ></mwc-list-item
-      >
-    `;
-  return html`<mwc-list-item class="filter" data-path="${needle}" hasMeta
-    ><mwc-icon slot="meta">unfold_less</mwc-icon></mwc-list-item
-  >`;
-}
+const placeholderCell = html`<md-list-item type="text"></md-list-item>`;
 
 function debounce(callback: () => void, delay = 250) {
   let timeout: ReturnType<typeof setTimeout>;
@@ -76,8 +59,14 @@ function debounce(callback: () => void, delay = 250) {
 }
 
 /* A web component for selecting parts of tree shaped data structures */
-@customElement('oscd-tree-grid')
-export class TreeGrid extends LitElement {
+export class TreeGrid extends ScopedElementsMixin(LitElement) {
+  static scopedElements = {
+    'md-list': MdList,
+    'md-icon': MdIcon,
+    'md-list-item': MdListItem,
+    'md-outlined-textfield': MdOutlinedTextField,
+  };
+
   /** The `Tree` to be selected from */
   @property({ type: Object })
   tree: Tree = {};
@@ -130,8 +119,8 @@ export class TreeGrid extends LitElement {
     return depth(this.selection);
   }
 
-  @query('mwc-textfield')
-  private filterUI?: TextField;
+  @query('md-outlined-textfield')
+  filterUI?: MdOutlinedTextField;
 
   private get filterRegex(): RegExp {
     return new RegExp(this.filter, 'u');
@@ -193,6 +182,74 @@ export class TreeGrid extends LitElement {
       .filter((x, i, xs) => !samePath(x, xs[i - 1]));
   }
 
+  // eslint-disable-next-line class-methods-use-this
+  private clicked(el: HTMLElement): MdListItem {
+    if (el.tagName === 'MD-LIST-ITEM') return el as MdListItem;
+    return el.parentElement as MdListItem;
+  }
+
+  private select(parentPath: Path, clicked: string): void {
+    const path = parentPath.concat([clicked]);
+    const isSubPath = (p: Path) => path.every((s, i) => p[i] === s);
+    if (this.paths.some(isSubPath)) {
+      this.collapsed.delete(JSON.stringify(path));
+      this.paths = this.paths.filter(p => !isSubPath(p)).concat([parentPath]);
+    } else this.paths = this.paths.concat([path]);
+  }
+
+  private selectAll(clicked: MdListItem): void {
+    const items = Array.from(clicked.closest('md-list')!.children).slice(
+      1
+    ) as MdListItem[];
+
+    const selected = items.some(
+      item =>
+        !(item as MdListItem).hasAttribute('activated') &&
+        (item as MdListItem).type !== 'text' &&
+        !(item as MdListItem).disabled
+    );
+    let newPaths = [...this.paths];
+    items
+      .filter(item => item.type !== 'text')
+      .filter(item => !item.disabled)
+      .filter(item => selected !== item.hasAttribute('activated'))
+      .forEach(item => {
+        const path = JSON.parse(item.dataset.path!).concat([
+          item.getAttribute('value'),
+        ]) as Path;
+        const isSubPath = (p: Path) => path.every((s, i) => p[i] === s);
+        if (newPaths.some(isSubPath))
+          newPaths = newPaths
+            .filter(p => !isSubPath(p))
+            .concat([path.slice(0, -1)]);
+        else newPaths.push(path);
+      });
+    this.paths = newPaths;
+  }
+
+  private async scrollRight(): Promise<void> {
+    this.requestUpdate();
+    await this.updateComplete;
+    requestAnimationFrame(() => {
+      if (this.container) this.container.scrollLeft = 1000 * this.depth;
+    });
+  }
+
+  private handleSelected(event: Event): Promise<void> {
+    const clicked = this.clicked(event.target as HTMLElement);
+    const selectedValue = clicked.getAttribute('value')!;
+    if (selectedValue === undefined || !clicked) return Promise.resolve();
+
+    if (selectedValue === selectAllValue) {
+      this.selectAll(clicked);
+    } else {
+      const path = JSON.parse(clicked.dataset.path!) as Path;
+      this.select(path, selectedValue);
+    }
+
+    return this.scrollRight();
+  }
+
   private renderCell(path: Path, previousPath: Path = []): TemplateResult {
     const parent = path.slice(0, -1);
     const entry = path[path.length - 1];
@@ -209,7 +266,7 @@ export class TreeGrid extends LitElement {
       defaultSelected = true;
       // workaround for buggy interaction between lit-html and mwc-list-item
       // eslint-disable-next-line no-param-reassign
-      (item as ListItem).activated = activated && !noninteractive;
+      (item as MdListItem).activated = activated && !noninteractive;
       if (this.treeNode(path).mandatory) {
         let dir = this.selection;
         for (const slug of path.slice(0, -1)) dir = dir[slug]; // rec. descent
@@ -235,82 +292,21 @@ export class TreeGrid extends LitElement {
       else icon = '';
     if (noninteractive) icon = 'subdirectory_arrow_right';
 
-    return html`<mwc-list-item
+    return html`<md-list-item
+      @click="${(evt: Event) => this.handleSelected(evt)}"
       value="${entry}"
       data-path=${JSON.stringify(parent)}
-      hasMeta
       ?activated=${activated}
       ?disabled=${disabled}
       ?noninteractive=${noninteractive}
+      .type=${noninteractive ? 'text' : 'link'}
       style="${noninteractive ? 'opacity: 0.38' : ''}"
       ${ref(afterRender)}
       >${icon
-        ? html`<mwc-icon slot="meta">${icon}</mwc-icon>`
+        ? html`<md-icon slot="end">${icon}</md-icon>`
         : html``}${this.treeNode(path).text ??
-      path[path.length - 1]}</mwc-list-item
+      path[path.length - 1]}</md-list-item
     >`;
-  }
-
-  private select(parentPath: Path, clicked: string): void {
-    const path = parentPath.concat([clicked]);
-    const isSubPath = (p: Path) => path.every((s, i) => p[i] === s);
-    if (this.paths.some(isSubPath)) {
-      this.collapsed.delete(JSON.stringify(path));
-      this.paths = this.paths.filter(p => !isSubPath(p)).concat([parentPath]);
-    } else this.paths = this.paths.concat([path]);
-  }
-
-  private selectAll(clicked: ListItem): void {
-    const items = Array.from(clicked.closest('mwc-list')!.children).slice(
-      1
-    ) as ListItem[];
-    const selected = items.some(
-      item =>
-        !(item as ListItem).activated &&
-        !(item as ListItem).noninteractive &&
-        !(item as ListItem).disabled
-    );
-    let newPaths = [...this.paths];
-    items
-      .filter(item => !item.noninteractive)
-      .filter(item => !item.disabled)
-      .filter(item => selected !== item.activated)
-      .forEach(item => {
-        const path = JSON.parse(item.dataset.path!).concat([
-          item.value,
-        ]) as Path;
-        const isSubPath = (p: Path) => path.every((s, i) => p[i] === s);
-        if (newPaths.some(isSubPath))
-          newPaths = newPaths
-            .filter(p => !isSubPath(p))
-            .concat([path.slice(0, -1)]);
-        else newPaths.push(path);
-      });
-    this.paths = newPaths;
-  }
-
-  private handleSelected(event: SingleSelectedEvent): Promise<void> {
-    const clicked = <ListItem | null>(<List>event.target).selected;
-    const selectedValue = clicked?.value;
-    if (selectedValue === undefined || !clicked) return Promise.resolve();
-
-    if (selectedValue === selectAllValue) {
-      this.selectAll(clicked);
-    } else {
-      const path = JSON.parse(clicked.dataset.path!) as Path;
-      this.select(path, selectedValue);
-    }
-
-    clicked.selected = false;
-    return this.scrollRight();
-  }
-
-  private async scrollRight(): Promise<void> {
-    this.requestUpdate();
-    await this.updateComplete;
-    requestAnimationFrame(() => {
-      if (this.container) this.container.scrollLeft = 1000 * this.depth;
-    });
   }
 
   private renderColumn(column: (Path | undefined)[]): TemplateResult {
@@ -325,19 +321,14 @@ export class TreeGrid extends LitElement {
       );
     }
 
-    return html`<mwc-list
-      @selected=${(e: SingleSelectedEvent) => this.handleSelected(e)}
-      ><mwc-list-item hasMeta value="${selectAllValue}"
-        ><mwc-icon slot="meta">done_all</mwc-icon></mwc-list-item
-      >${items}</mwc-list
-    >`;
-  }
-
-  private renderExpandCell(path: Path): TemplateResult {
-    const needle = JSON.stringify(path);
-    if (!this.collapsed.has(needle) || !path.length) return placeholderCell;
-    return html`<mwc-list-item class="filter" data-path="${needle}" hasMeta
-      ><mwc-icon slot="meta">unfold_more</mwc-icon></mwc-list-item
+    return html`<md-list
+      ><md-list-item
+        type="link"
+        @click="${(evt: Event) => this.handleSelected(evt)}"
+        value="${selectAllValue}"
+        ><div slot="headline"></div>
+        <md-icon slot="end">done_all</md-icon></md-list-item
+      >${items}</md-list
     >`;
   }
 
@@ -348,33 +339,60 @@ export class TreeGrid extends LitElement {
     this.requestUpdate();
   }
 
+  private renderExpandCell(path: Path): TemplateResult {
+    const needle = JSON.stringify(path);
+    if (!this.collapsed.has(needle) || !path.length) return placeholderCell;
+    return html`<md-list-item
+      type="link"
+      class="filter"
+      data-path="${needle}"
+      @click="${(evt: Event) => {
+        const clicked = this.clicked(evt.target as HTMLElement);
+        // eslint-disable-next-line no-shadow
+        const { path } = clicked.dataset;
+        if (path) this.toggleCollapse(path);
+      }}"
+      ><div slot="headline"></div>
+      <md-icon slot="end">unfold_more</md-icon></md-list-item
+    >`;
+  }
+
   private renderExpandColumn(rows: Path[]): TemplateResult {
     return html`
-      <mwc-list
-        class="expand"
-        @selected=${(e: SingleSelectedEvent) => {
-          const clicked = <ListItem | null>(<List>e.target).selected;
-          if (!clicked) return;
-          clicked.selected = false;
-          const { path } = clicked.dataset;
-          if (path) this.toggleCollapse(path);
-        }}
-        >${placeholderCell}${rows.map(p => this.renderExpandCell(p))}</mwc-list
+      <md-list class="expand"
+        >${placeholderCell}${rows.map(p => this.renderExpandCell(p))}</md-list
       >
     `;
   }
 
-  private renderCollapseColumn(rows: Path[]): TemplateResult {
-    return html`<mwc-list
-      class="collapse"
-      @selected=${(e: SingleSelectedEvent) => {
-        const clicked = <ListItem | null>(<List>e.target).selected;
-        if (!clicked) return;
-        clicked.selected = false;
+  private renderCollapseCell(path: Path): TemplateResult {
+    const needle = JSON.stringify(path.slice(0, -1));
+    if (path.length < 2)
+      return html`
+        <md-list-item type="text"
+          ><md-icon style="opacity: 0" ; slot="end"
+            >unfold_less</md-icon
+          ></md-list-item
+        >
+      `;
+    return html`<md-list-item
+      type="link"
+      class="filter"
+      data-path="${needle}"
+      @click="${(evt: Event) => {
+        const clicked = this.clicked(evt.target as HTMLElement);
+        // eslint-disable-next-line no-shadow
         const { path } = clicked.dataset;
         if (path) this.toggleCollapse(path);
-      }}
-      >${placeholderCell}${rows.map(p => renderCollapseCell(p))}</mwc-list
+      }}"
+      ><div slot="headline"></div>
+      <md-icon slot="end">unfold_less</md-icon></md-list-item
+    >`;
+  }
+
+  private renderCollapseColumn(rows: Path[]): TemplateResult {
+    return html`<md-list class="collapse"
+      >${placeholderCell}${rows.map(p => this.renderCollapseCell(p))}</md-list
     >`;
   }
 
@@ -390,19 +408,22 @@ export class TreeGrid extends LitElement {
   }
 
   private renderFilterField() {
-    return html`<mwc-textfield
-      style="--mdc-shape-small: 28px;"
-      outlined
+    return html`<md-outlined-textfield
+      style="--md-outlined-text-field-container-shape: 28px;"
       icon="search"
-      ${ref(elm =>
-        elm?.setAttribute(
-          'icon',
-          (elm as TextField).value ? 'saved_search' : 'search'
-        )
-      )}
+      ${ref(elm => {
+        if (!elm) return;
+        const regExp = !!(elm as MdOutlinedTextField).value;
+        // eslint-disable-next-line no-param-reassign
+        elm.querySelector('md-icon')!.textContent = regExp
+          ? 'saved_search'
+          : 'search';
+      })}
       label="${this.filterLabel}"
       @input=${debounce(() => this.requestUpdate('filter'))}
-    ></mwc-textfield>`;
+    >
+      <md-icon slot="leading-icon">search</md-icon>
+    </md-outlined-textfield>`;
   }
 
   render() {
@@ -417,14 +438,8 @@ export class TreeGrid extends LitElement {
       overflow: auto;
     }
 
-    mwc-list-item.filter {
+    md-list-item.filter {
       color: var(--mdc-theme-text-hint-on-background, rgba(0, 0, 0, 0.38));
     }
   `;
-}
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'oscd-tree-grid': TreeGrid;
-  }
 }

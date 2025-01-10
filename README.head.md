@@ -1,22 +1,22 @@
-# \<oscd-tree-grid>
+# \<tree-grid>
 
 ## Installation
 
 ```bash
-npm i oscd-tree-grid
+npm i tree-grid
 ```
 
 ## Usage
 
 ```html
 <script type="module">
-  import 'oscd-tree-grid';
+  import 'tree-grid';
 </script>
 
-<oscd-tree-grid filterLabel="Regular Expression"></oscd-tree-grid>
+<tree-grid filterLabel="Regular Expression"></tree-grid>
 
 <script type="module">
-  const oscdTree = document.querySelector('oscd-tree-grid');
+  const oscdTree = document.querySelector('tree-grid');
   await oscdTree.updateComplete;
 
   const tree = await fetch('/tree.json').then(r => r.json());
@@ -27,7 +27,7 @@ npm i oscd-tree-grid
 
 ## TypeScript types
 
-For use with [TypeScript](https://www.typescriptlang.org/), `oscd-tree-grid`
+For use with [TypeScript](https://www.typescriptlang.org/), `tree-grid`
 exports the following types:
 
 ```ts

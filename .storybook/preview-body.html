@@ -2,7 +2,7 @@
   async function loadTreeData() {
   await new Promise(res => setTimeout(res, 2500));
 const tree = await fetch('./tree.json').then(r => r.json());
-const oscdTree = document.querySelector('oscd-tree-grid');
+const oscdTree = document.querySelector('tree-grid');
 await oscdTree.updateComplete;
 
 oscdTree.tree = tree;
