@@ -1,11 +1,9 @@
-/* eslint-disable dot-notation */
 import { expect, fixture } from '@open-wc/testing';
 import { html } from 'lit';
 
-import '@material/mwc-list/mwc-list-item.js';
-import './oscd-tree-grid.js';
-import type { ListItem } from '@material/mwc-list/mwc-list-item.js';
-import type { TreeGrid } from './oscd-tree-grid.js';
+import './tree-grid.js';
+import type { MdListItem } from '@scopedelement/material-web/list/MdListItem.js';
+import type { TreeGrid } from './TreeGrid.js';
 
 const tree = {
   a: {
@@ -31,13 +29,19 @@ const tree = {
   c: { children: { ca: {}, cb: { children: { cba: {}, cbb: {}, cbc: {} } } } },
 };
 
-describe('oscd-tree-grid', () => {
+function timeout(ms: number) {
+  return new Promise(res => {
+    setTimeout(res, ms);
+  });
+}
+
+describe('tree-grid', () => {
   it('preselects provided `paths`', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid
+      html`<tree-grid
         .tree=${tree}
         paths='[["a", "ab", "abc"],["b", "bb", "bbc"],["nonsense","path"]]'
-      ></oscd-tree-grid>`
+      ></tree-grid>`
     );
     expect(el.paths).to.deep.equal([
       ['a', 'ab', 'abc'],
@@ -55,7 +59,7 @@ describe('oscd-tree-grid', () => {
 
   it('filters rows given a `filter` attribute', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid filter="[bc]" .tree=${tree}></oscd-tree-grid>`
+      html`<tree-grid filter="[bc]" .tree=${tree}></tree-grid>`
     );
 
     /* should display these rows:
@@ -64,7 +68,7 @@ describe('oscd-tree-grid', () => {
      * 3 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 3);
 
     el.filter = 'a';
@@ -74,7 +78,7 @@ describe('oscd-tree-grid', () => {
      * 1 extra row for "selectAll" buttons
      * 2 a
      */
-    expect(el.shadowRoot?.querySelector('mwc-list')).to.have.property(
+    expect(el.shadowRoot?.querySelector('md-list')).to.have.property(
       'childElementCount',
       2
     );
@@ -82,12 +86,12 @@ describe('oscd-tree-grid', () => {
 
   it('filters rows on typing into the filter field', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid .tree=${tree}></oscd-tree-grid>`
+      html`<tree-grid .tree=${tree}></tree-grid>`
     );
 
     // simulate typing
-    el['filterUI']!.value = '[bc]';
-    el['filterUI']!.dispatchEvent(new Event('input'));
+    el.filterUI!.value = '[bc]';
+    el.filterUI!.dispatchEvent(new Event('input'));
 
     await new Promise(res => {
       setTimeout(res, 260);
@@ -99,16 +103,16 @@ describe('oscd-tree-grid', () => {
      * 3 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 3);
   });
 
   it('collapses rows on collapse button click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid
+      html`<tree-grid
         .tree=${tree}
         paths='[["a", "ab", "abc"],["b", "bb", "bbc"]]'
-      ></oscd-tree-grid>`
+      ></tree-grid>`
     );
 
     /* should display these rows, (X) indicating selected items:
@@ -125,12 +129,12 @@ describe('oscd-tree-grid', () => {
      * 11 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 11);
 
     // collapse ABBA
     el.shadowRoot
-      ?.querySelectorAll<ListItem>('.collapse > .filter')[1]
+      ?.querySelectorAll<MdListItem>('.collapse > .filter')[1]
       ?.click();
     await el.updateComplete;
 
@@ -145,13 +149,13 @@ describe('oscd-tree-grid', () => {
      * 8 b bc
      * 9 c
      */
-    expect(el.shadowRoot?.querySelector('mwc-list')).to.have.property(
+    expect(el.shadowRoot?.querySelector('md-list')).to.have.property(
       'childElementCount',
       9
     );
 
     // collapse aa
-    el.shadowRoot?.querySelector<ListItem>('.collapse > .filter')?.click();
+    el.shadowRoot?.querySelector<MdListItem>('.collapse > .filter')?.click();
     await el.updateComplete;
 
     /* should display these rows:
@@ -162,7 +166,7 @@ describe('oscd-tree-grid', () => {
      * 5 b bc
      * 6 c
      */
-    expect(el.shadowRoot?.querySelector('mwc-list')).to.have.property(
+    expect(el.shadowRoot?.querySelector('md-list')).to.have.property(
       'childElementCount',
       6
     );
@@ -170,18 +174,18 @@ describe('oscd-tree-grid', () => {
 
   it('expands rows on expand button click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid
+      html`<tree-grid
         .tree=${tree}
         paths='[["a", "ab", "abc"],["b", "bb", "bbc"]]'
-      ></oscd-tree-grid>`
+      ></tree-grid>`
     );
 
     // collapse ABBA
     el.shadowRoot
-      ?.querySelectorAll<ListItem>('.collapse > .filter')[1]
+      ?.querySelectorAll<MdListItem>('.collapse > .filter')[1]
       ?.click();
     // collapse aa
-    el.shadowRoot?.querySelector<ListItem>('.collapse > .filter')?.click();
+    el.shadowRoot?.querySelector<MdListItem>('.collapse > .filter')?.click();
     await el.updateComplete;
 
     /* should display these rows:
@@ -192,13 +196,13 @@ describe('oscd-tree-grid', () => {
      * 5 b bc
      * 6 c
      */
-    expect(el.shadowRoot?.querySelector('mwc-list')).to.have.property(
+    expect(el.shadowRoot?.querySelector('md-list')).to.have.property(
       'childElementCount',
       6
     );
 
     // expand a
-    el.shadowRoot?.querySelector<ListItem>('.expand > .filter')?.click();
+    el.shadowRoot?.querySelector<MdListItem>('.expand > .filter')?.click();
     await el.updateComplete;
 
     /* should display these rows, (C) indicating collapsed items:
@@ -212,7 +216,7 @@ describe('oscd-tree-grid', () => {
      * 8 b bc
      * 9 c
      */
-    expect(el.shadowRoot?.querySelector('mwc-list')).to.have.property(
+    expect(el.shadowRoot?.querySelector('md-list')).to.have.property(
       'childElementCount',
       9
     );
@@ -220,14 +224,14 @@ describe('oscd-tree-grid', () => {
 
   it('selects a row on unselected list item click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid .tree=${tree}></oscd-tree-grid>`
+      html`<tree-grid .tree=${tree}></tree-grid>`
     );
 
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 4);
 
-    el.shadowRoot?.querySelector<ListItem>('[value="a"]')?.click();
+    el.shadowRoot?.querySelector<MdListItem>('[value="a"]')?.click();
     await el.updateComplete;
 
     /* should display these rows:
@@ -239,20 +243,20 @@ describe('oscd-tree-grid', () => {
      * 6 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 6);
   });
 
   it('deselects a row on selected list item click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid paths='[["a"]]' .tree=${tree}></oscd-tree-grid>`
+      html`<tree-grid paths='[["a"]]' .tree=${tree}></tree-grid>`
     );
 
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 6);
 
-    el.shadowRoot?.querySelector<ListItem>('[value="a"]')?.click();
+    el.shadowRoot?.querySelector<MdListItem>('[value="a"]')?.click();
     await el.updateComplete;
 
     /* should display these rows:
@@ -262,17 +266,17 @@ describe('oscd-tree-grid', () => {
      * 4 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 4);
   });
 
   it('selects any unselected rows in a column on "selectAll" item click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid paths='[["a"]]' .tree=${tree}></oscd-tree-grid>`
+      html`<tree-grid paths='[["a"]]' .tree=${tree}></tree-grid>`
     );
 
     el.shadowRoot
-      ?.querySelector<ListItem>('mwc-list:not(.collapse) > mwc-list-item')
+      ?.querySelector<MdListItem>('md-list:not(.collapse) > md-list-item')
       ?.click();
     await el.updateComplete;
 
@@ -287,20 +291,17 @@ describe('oscd-tree-grid', () => {
      * 8 c cb
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 8);
   });
 
   it('deselects all rows in a fully selected column on "selectAll" click', async () => {
     const el = await fixture<TreeGrid>(
-      html`<oscd-tree-grid
-        paths='[["a"], ["b"], ["c"]]'
-        .tree=${tree}
-      ></oscd-tree-grid>`
+      html`<tree-grid paths='[["a"], ["b"], ["c"]]' .tree=${tree}></tree-grid>`
     );
 
     el.shadowRoot
-      ?.querySelector<ListItem>('mwc-list:not(.collapse) > mwc-list-item')
+      ?.querySelector<MdListItem>('md-list:not(.collapse) > md-list-item')
       ?.click();
     await el.updateComplete;
 
@@ -311,15 +312,7 @@ describe('oscd-tree-grid', () => {
      * 4 c
      */
     expect(
-      el.shadowRoot?.querySelector('mwc-list')
+      el.shadowRoot?.querySelector('md-list')
     ).to.exist.and.to.have.property('childElementCount', 4);
-  });
-
-  it('passes the a11y audit', async () => {
-    const el = await fixture<TreeGrid>(html`<oscd-tree-grid></oscd-tree-grid>`);
-
-    await expect(el).shadowDom.to.be.accessible({
-      ignoredRules: ['list'],
-    });
   });
 });

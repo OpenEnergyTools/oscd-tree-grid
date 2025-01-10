@@ -1,12 +1,12 @@
 import { html, TemplateResult } from 'lit';
 
-import './oscd-tree-grid.js';
+import './tree-grid.js';
 
 const defaultTree = await fetch('./tree.json').then(res => res.json());
 
 export default {
   title: 'OpenSCD Tree Table',
-  component: 'oscd-tree-grid',
+  component: 'tree-grid',
   argTypes: {
     tree: {
       type: 'object',
@@ -47,13 +47,13 @@ const Template: Story = ({
   filter = '',
   filterLabel = 'Regular Expression',
 }) => html`
-  <oscd-tree-grid
+  <tree-grid
     .tree=${tree}
     paths="${JSON.stringify(paths)}"
     filter="${filter}"
     filterLabel="${filterLabel}"
   >
-  </oscd-tree-grid>
+  </tree-grid>
 `;
 
 export const Default = Template.bind({});
