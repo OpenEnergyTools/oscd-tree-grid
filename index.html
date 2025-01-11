@@ -1,15 +1,24 @@
-<link preload rel="stylesheet" href="./fonts.css">
-<title>OpenSCD Core Demo</title>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300&family=Roboto:wght@300;400;500&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined">
+  </head>
+  <body>
+    <tree-grid></tree-grid>
+    <script type="module">
+        import '../dist/tree-grid.js';
 
-<oscd-tree-grid filterLabel="Regular Expression"></oscd-tree-grid>
+        const oscdTree = document.querySelector('tree-grid');
+        await oscdTree.updateComplete;
 
-<script type="module">
-import './dist/tree-grid.js';
+        const tree = await fetch('/tree.json').then(r => r.json());
 
-const oscdTree = document.querySelector('tree-grid');
-await oscdTree.updateComplete;
-
-const tree = await fetch('/tree.json').then(r => r.json());
-
-oscdTree.tree = tree;
-</script>
+        oscdTree.tree = tree;
+    </script>
+    <style>
+        body {
+        background: white;
+        }
+    </style>
+  </body>
+</html>s

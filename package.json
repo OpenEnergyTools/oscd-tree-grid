@@ -4,10 +4,10 @@
   "license": "Apache-2.0",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/tree-grid.js",
-  "module": "dist/tree-grid.js",
+  "main": "dist/TreeGrid.js",
+  "module": "dist/TreeGrid.js",
   "exports": {
-    ".": "./dist/tree-grid.js"
+    ".": "./dist/TreeGrid.js"
   },
   "scripts": {
     "analyze": "cem analyze",
