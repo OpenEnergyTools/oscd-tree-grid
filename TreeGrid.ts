@@ -293,7 +293,25 @@ export class TreeGrid extends ScopedElementsMixin(LitElement) {
     if (noninteractive) icon = 'subdirectory_arrow_right';
 
     return html`<md-list-item
-      @click="${(evt: Event) => this.handleSelected(evt)}"
+      @click="${async (evt: Event) => {
+        this.handleSelected(evt);
+
+        // send custom event with tree component
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, 1);
+        });
+        if (!activated)
+          this.dispatchEvent(
+            new CustomEvent('node-selected', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                node: this.treeNode(path),
+                path: path,
+              },
+            })
+          );
+      }}"
       value="${entry}"
       data-path=${JSON.stringify(parent)}
       ?activated=${activated}
