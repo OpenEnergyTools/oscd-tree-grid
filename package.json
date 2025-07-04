@@ -2,7 +2,7 @@
   "name": "@openenergytools/tree-grid",
   "description": "An md-list based grid component for selecting subtrees from tree shaped data structures",
   "license": "Apache-2.0",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "main": "dist/TreeGrid.js",
   "module": "dist/TreeGrid.js",

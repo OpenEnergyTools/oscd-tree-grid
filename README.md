@@ -87,6 +87,12 @@ export type Tree = Partial<Record<string, TreeNode>>;
 | `filterLabel` |         | `string`                           | `''`    | Filter \`TextField\` label                 |                |
 | `filterUI`    |         | `MdOutlinedTextField \| undefined` |         |                                            |                |
 
+#### Events
+
+| Name            | Type          | Description | Inherited From |
+| --------------- | ------------- | ----------- | -------------- |
+| `node-selected` | `CustomEvent` |             |                |
+
 <details><summary>Private API</summary>
 
 #### Fields
